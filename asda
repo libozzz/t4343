@@ -1,0 +1,1202 @@
+local Vertical = {};
+local UIAnimationSpeed = 0.1;
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Caching system
+local cache = {}
+function Vertical.cacheInstance(name, instance)
+    cache[name] = instance
+end
+function Vertical.getCached(name)
+    return cache[name]
+end
+function Vertical.clearCache()
+    cache = {}
+end
+
+-- GUID generator using base64-like encoding
+local function generateGUID()
+    local randomBytes = {}
+    for i = 1, 16 do
+        randomBytes[i] = math.random(0, 255)
+    end
+    local byteString = string.char(unpack(randomBytes))
+    return HttpService:UrlEncode(byteString):gsub("%%", ""):sub(1, 22) -- Base64-like, truncated for brevity
+end
+
+-- Init ScreenGui with random name to avoid detection
+local screenGuiName = generateGUID()
+local ScreenGui = script.Parent.Parent
+ScreenGui.Name = screenGuiName
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") -- Use PlayerGui with random name for evasion
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+function Vertical.newWindow(windowName, windowSettings)
+    if windowName == nil then
+        windowName = "Window"
+    end
+    local windowGUID = generateGUID()
+    local newWindow = Instance.new("Frame", ScreenGui)
+    newWindow.BorderSizePixel = 0
+    newWindow.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    newWindow.Size = UDim2.new(0, 300, 0, 400)
+    newWindow.Position = UDim2.new(0.07388179004192352, 0, 0.15295256674289703, 0)
+    newWindow.Name = windowGUID
+    Vertical.cacheInstance(windowGUID, newWindow)
+
+    if windowSettings.windowSize then
+        newWindow.Size = windowSettings.windowSize
+    end
+    if windowSettings.windowPosition then
+        newWindow.Position = windowSettings.windowPosition
+    end
+
+    local function setWindowLight(integer)
+        newWindow.BackgroundColor3 = Color3.fromRGB(integer, integer, integer)
+    end
+
+    if windowSettings.draggable == true then
+        local gui = newWindow
+        local dragging, dragInput, dragStart, startPos
+        local function Lerp(a, b, m)
+            return a + (b - a) * m
+        end
+        local lastMousePos, lastGoalPos
+        local DRAG_SPEED = 8
+        local function Update(dt)
+            if not startPos then return end
+            if not dragging and lastGoalPos then
+                gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, lastGoalPos.X.Offset, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, lastGoalPos.Y.Offset, dt * DRAG_SPEED))
+                return
+            end
+            local delta = (lastMousePos - UserInputService:GetMouseLocation())
+            local xGoal = (startPos.X.Offset - delta.X)
+            local yGoal = (startPos.Y.Offset - delta.Y)
+            lastGoalPos = UDim2.new(startPos.X.Scale, xGoal, startPos.Y.Scale, yGoal)
+            gui.Position = UDim2.new(startPos.X.Scale, Lerp(gui.Position.X.Offset, xGoal, dt * DRAG_SPEED), startPos.Y.Scale, Lerp(gui.Position.Y.Offset, yGoal, dt * DRAG_SPEED))
+        end
+        gui.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+                dragging = true
+                dragStart = input.Position
+                startPos = gui.Position
+                lastMousePos = UserInputService:GetMouseLocation()
+                input.Changed:Connect(function()
+                    if input.UserInputState == Enum.UserInputState.End then
+                        dragging = false
+                    end
+                end)
+            end
+        end)
+        gui.InputChanged:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+                dragInput = input
+            end
+        end)
+        RunService.Heartbeat:Connect(Update)
+    end
+
+    local function toggleVisibility()
+        newWindow.Visible = not newWindow.Visible
+    end
+    if windowSettings.hide == true then
+        newWindow.Visible = false
+    end
+
+    local newTitle = Instance.new("TextLabel", newWindow)
+    newTitle.BorderSizePixel = 0
+    newTitle.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newTitle.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newTitle.TextSize = 17
+    newTitle.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newTitle.Size = UDim2.new(0, 238, 0, 25)
+    newTitle.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newTitle.Text = windowName
+    newTitle.Name = generateGUID()
+    newTitle.BackgroundTransparency = 1
+    newTitle.Position = UDim2.new(0.10333333164453506, 0, 0.014999999664723873, 0)
+
+    local function setWindowName(name)
+        newTitle.Text = name
+    end
+    if windowSettings.hideWindowTitle == true then
+        newTitle.Visible = false
+    end
+
+    if windowSettings.noCloseButton ~= true then
+        local newWindowButton = Instance.new("ImageButton", newWindow)
+        newWindowButton.Image = "rbxassetid://3926305904"
+        newWindowButton.ImageRectSize = Vector2.new(24, 24)
+        newWindowButton.Size = UDim2.new(0, 25, 0, 25)
+        newWindowButton.Name = generateGUID()
+        newWindowButton.ImageRectOffset = Vector2.new(284, 4)
+        newWindowButton.Position = UDim2.new(0.8966666460037231, 0, 0.014999999664723873, 0)
+        newWindowButton.BackgroundTransparency = 1
+        newWindowButton.MouseButton1Click:Connect(function()
+            local tween = newWindow:TweenSize(UDim2.new(0,0,0,0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, UIAnimationSpeed, true)
+            for _, v in pairs(newWindow:GetDescendants()) do
+                pcall(function()
+                    v:TweenSize(UDim2.new(0,0,0,0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, UIAnimationSpeed, true)
+                end)
+            end
+            tween.Completed:Wait()
+            newWindow:Destroy()
+        end)
+    end
+
+    local newWindowUICorner = Instance.new("UICorner", newWindow)
+    newWindowUICorner.CornerRadius = UDim.new(0, 7)
+
+    local newWindowUIGradient = Instance.new("UIGradient", newWindow)
+    newWindowUIGradient.Rotation = 90
+    newWindowUIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(50, 50, 50)), ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 50))}
+    if windowSettings.windowColor then
+        newWindowUIGradient.Color = ColorSequence.new{ColorSequenceKeypoint.new(0, Color3.fromRGB(windowSettings.windowColor[1], windowSettings.windowColor[2], windowSettings.windowColor[3])), ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))}
+    end
+
+    local newWindowContent = Instance.new("ScrollingFrame", newWindow)
+    newWindowContent.Active = true
+    newWindowContent.BorderSizePixel = 0
+    newWindowContent.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowContent.BackgroundTransparency = 1
+    newWindowContent.Size = UDim2.new(1, 0, 1, -31)
+    newWindowContent.ScrollBarImageColor3 = Color3.fromRGB(71, 71, 71)
+    newWindowContent.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowContent.ScrollBarThickness = 6
+    newWindowContent.Position = UDim2.new(0, 0, 0.07750000059604645, 0)
+    newWindowContent.Name = generateGUID()
+
+    local newWindowContentUIPadding = Instance.new("UIPadding", newWindowContent)
+    newWindowContentUIPadding.PaddingTop = UDim.new(0, 8)
+
+    local newWindowContentUIListLayout = Instance.new("UIListLayout", newWindowContent)
+    newWindowContentUIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    newWindowContentUIListLayout.Padding = UDim.new(0, 7)
+    newWindowContentUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function updateCanvas()
+        newWindowContent.CanvasSize = UDim2.new(0, 0, 0, newWindowContentUIListLayout.AbsoluteContentSize.Y)
+    end
+    newWindowContentUIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+    updateCanvas()
+
+    local function clear()
+        for _, v in pairs(newWindowContent:GetChildren()) do
+            if v:IsA("Frame") then
+                v:Destroy()
+            end
+        end
+    end
+
+    if windowSettings.showShadows == true then
+        local newWindowShadowHolder = Instance.new("Frame", newWindow)
+        newWindowShadowHolder.ZIndex = 0
+        newWindowShadowHolder.BackgroundTransparency = 1
+        newWindowShadowHolder.Size = UDim2.new(1.056666612625122, 0, 1.037500023841858, 0)
+        newWindowShadowHolder.Position = UDim2.new(-0.02666666731238365, 0, -0.015999999552965164, 0)
+        newWindowShadowHolder.Name = generateGUID()
+
+        local newWindowUmbraShadow = Instance.new("ImageLabel", newWindowShadowHolder)
+        newWindowUmbraShadow.ZIndex = 0
+        newWindowUmbraShadow.SliceCenter = Rect.new(10, 10, 118, 118)
+        newWindowUmbraShadow.ScaleType = Enum.ScaleType.Slice
+        newWindowUmbraShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowUmbraShadow.ImageTransparency = 0.8600000143051147
+        newWindowUmbraShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+        newWindowUmbraShadow.Image = "rbxassetid://1316045217"
+        newWindowUmbraShadow.Size = UDim2.new(1, 2, 1, 2)
+        newWindowUmbraShadow.Name = generateGUID()
+        newWindowUmbraShadow.BackgroundTransparency = 1
+        newWindowUmbraShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+        local newWindowPenumbraShadow = Instance.new("ImageLabel", newWindowShadowHolder)
+        newWindowPenumbraShadow.ZIndex = 0
+        newWindowPenumbraShadow.SliceCenter = Rect.new(10, 10, 118, 118)
+        newWindowPenumbraShadow.ScaleType = Enum.ScaleType.Slice
+        newWindowPenumbraShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowPenumbraShadow.ImageTransparency = 0.8799999952316284
+        newWindowPenumbraShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+        newWindowPenumbraShadow.Image = "rbxassetid://1316045217"
+        newWindowPenumbraShadow.Size = UDim2.new(1, 2, 1, 2)
+        newWindowPenumbraShadow.Name = generateGUID()
+        newWindowPenumbraShadow.BackgroundTransparency = 1
+        newWindowPenumbraShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+
+        local newWindowAmbientShadow = Instance.new("ImageLabel", newWindowShadowHolder)
+        newWindowAmbientShadow.ZIndex = 0
+        newWindowAmbientShadow.SliceCenter = Rect.new(10, 10, 118, 118)
+        newWindowAmbientShadow.ScaleType = Enum.ScaleType.Slice
+        newWindowAmbientShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowAmbientShadow.ImageTransparency = 0.8799999952316284
+        newWindowAmbientShadow.AnchorPoint = Vector2.new(0.5, 0.5)
+        newWindowAmbientShadow.Image = "rbxassetid://1316045217"
+        newWindowAmbientShadow.Size = UDim2.new(1, 2, 1, 2)
+        newWindowAmbientShadow.Name = generateGUID()
+        newWindowAmbientShadow.BackgroundTransparency = 1
+        newWindowAmbientShadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+    end
+
+    if windowSettings.pattern == true then
+        local newWindowBackground = Instance.new("ImageLabel", newWindow)
+        newWindowBackground.SliceCenter = Rect.new(0, 256, 0, 256)
+        newWindowBackground.ScaleType = Enum.ScaleType.Tile
+        newWindowBackground.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        newWindowBackground.ImageTransparency = 0.6000000238418579
+        newWindowBackground.Image = "rbxassetid://2151741365"
+        newWindowBackground.TileSize = UDim2.new(0, 250, 0, 250)
+        newWindowBackground.Size = newWindow.Size
+        newWindowBackground.Name = generateGUID()
+        newWindowBackground.BackgroundTransparency = 1
+    end
+
+    local ret = {
+        frame = newWindow,
+        main = newWindowContent,
+        toggleVisibility = toggleVisibility,
+        clear = clear,
+        setWindowLight = setWindowLight,
+        setWindowName = setWindowName
+    }
+
+    if windowSettings.sidebar == true then
+        local sidebarGUID = generateGUID()
+        local newWindowSidebar = Instance.new("Frame", newWindow)
+        newWindowSidebar.BorderSizePixel = 0
+        newWindowSidebar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowSidebar.Size = UDim2.new(0, 130, newWindow.Size.Y.Scale, newWindow.Size.Y.Offset)
+        newWindowSidebar.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowSidebar.Name = sidebarGUID
+        newWindowSidebar.Visible = false
+        newWindowSidebar.ZIndex = 2
+
+        local newWindowSidebarUICorner = Instance.new("UICorner", newWindowSidebar)
+        newWindowSidebarUICorner.CornerRadius = UDim.new(0, 7)
+
+        local newWindowSidebarTabs = Instance.new("ScrollingFrame", newWindowSidebar)
+        newWindowSidebarTabs.Active = true
+        newWindowSidebarTabs.BorderSizePixel = 0
+        newWindowSidebarTabs.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        newWindowSidebarTabs.BackgroundTransparency = 1
+        newWindowSidebarTabs.Size = UDim2.new(1, 0, 1, -45)
+        newWindowSidebarTabs.ScrollBarImageColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowSidebarTabs.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowSidebarTabs.Position = UDim2.new(0, 0, 0.11249999701976776, 0)
+        newWindowSidebarTabs.Name = generateGUID()
+        newWindowSidebarTabs.ZIndex = 2
+
+        local newWindowSidebarTabsUIListLayout = Instance.new("UIListLayout", newWindowSidebarTabs)
+        newWindowSidebarTabsUIListLayout.Padding = UDim.new(0, 4)
+        newWindowSidebarTabsUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+        local newWindowSidebarTabsUIPadding = Instance.new("UIPadding", newWindowSidebarTabs)
+        newWindowSidebarTabsUIPadding.PaddingLeft = UDim.new(0, 4)
+
+        local function updateSidebarCanvas()
+            newWindowSidebarTabs.CanvasSize = UDim2.new(0, 0, 0, newWindowSidebarTabsUIListLayout.AbsoluteContentSize.Y)
+        end
+        newWindowSidebarTabsUIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSidebarCanvas)
+        updateSidebarCanvas()
+
+        local newWindowSidebarButton = Instance.new("ImageButton", newWindow)
+        newWindowSidebarButton.LayoutOrder = 6
+        newWindowSidebarButton.Image = "rbxassetid://3926307971"
+        newWindowSidebarButton.ImageRectSize = Vector2.new(36, 36)
+        newWindowSidebarButton.Size = UDim2.new(0, 25, 0, 25)
+        newWindowSidebarButton.Name = generateGUID()
+        newWindowSidebarButton.ImageRectOffset = Vector2.new(404, 44)
+        newWindowSidebarButton.Position = UDim2.new(0.019611308351159096, 0, 0.013276862911880016, 0)
+        newWindowSidebarButton.BackgroundTransparency = 1
+        newWindowSidebarButton.ZIndex = 2
+
+        newWindowSidebar:SetAttribute("prevSize", newWindowSidebar.Size)
+        newWindowSidebarButton.MouseButton1Click:Connect(function()
+            if newWindowSidebar.Visible == false then
+                newWindowSidebar.Size = UDim2.new(0, 0, 0, 0)
+                newWindowSidebar.Visible = true
+                newWindowSidebar:TweenSize(newWindowSidebar:GetAttribute("prevSize"), Enum.EasingDirection.Out, Enum.EasingStyle.Sine, UIAnimationSpeed, true)
+                local tweenInfo = TweenInfo.new(UIAnimationSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+                TweenService:Create(newWindowSidebarButton, tweenInfo, {Rotation = -90}):Play()
+            elseif newWindowSidebar.Visible == true then
+                local tweenInfo = TweenInfo.new(UIAnimationSpeed, Enum.EasingStyle.Linear, Enum.EasingDirection.Out)
+                TweenService:Create(newWindowSidebarButton, tweenInfo, {Rotation = 0}):Play()
+                newWindowSidebar:TweenSize(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Sine, UIAnimationSpeed, true)
+                task.wait(UIAnimationSpeed)
+                newWindowSidebar.Visible = false
+            end
+        end)
+
+        if windowSettings.sidebarMainName == nil then
+            windowSettings.sidebarMainName = "main"
+        end
+        local newWindowSidebarTab = Instance.new("TextButton", newWindowSidebarTabs)
+        newWindowSidebarTab.BorderSizePixel = 0
+        newWindowSidebarTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        newWindowSidebarTab.TextSize = 16
+        newWindowSidebarTab.FontFace = Font.new("rbxasset://fonts/families/Ubuntu.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+        newWindowSidebarTab.TextColor3 = Color3.fromRGB(221, 221, 221)
+        newWindowSidebarTab.Size = UDim2.new(1, -4, 0, 40)
+        newWindowSidebarTab.Name = generateGUID()
+        newWindowSidebarTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowSidebarTab.Text = windowSettings.sidebarMainName
+        newWindowSidebarTab.Position = UDim2.new(0.04525686427950859, 0, 0.09749999642372131, 0)
+        newWindowSidebarTab.BackgroundTransparency = 1
+        newWindowSidebarTab.ZIndex = 2
+        newWindowSidebarTab.MouseButton1Click:Connect(function()
+            for _, v in pairs(newWindow:GetChildren()) do
+                if v:IsA("ScrollingFrame") then
+                    v.Visible = false
+                end
+            end
+            newWindowContent.Visible = true
+        end)
+
+        local newWindowSidebarTabUnderline = Instance.new("Frame", newWindowSidebarTab)
+        newWindowSidebarTabUnderline.BorderSizePixel = 0
+        newWindowSidebarTabUnderline.BackgroundColor3 = Color3.fromRGB(151, 151, 151)
+        newWindowSidebarTabUnderline.Size = UDim2.new(0, 110, 0, 1)
+        newWindowSidebarTabUnderline.BorderColor3 = Color3.fromRGB(0, 0, 0)
+        newWindowSidebarTabUnderline.Position = UDim2.new(0.03846153989434242, 0, 1, 0)
+        newWindowSidebarTabUnderline.Name = generateGUID()
+        newWindowSidebarTabUnderline.ZIndex = 2
+
+        local newWindowSidebarTabIcon = Instance.new("ImageButton", newWindowSidebarTab)
+        newWindowSidebarTabIcon.ImageTransparency = 0.10000000149011612
+        newWindowSidebarTabIcon.Image = "rbxassetid://3926305904"
+        newWindowSidebarTabIcon.ImageRectSize = Vector2.new(24, 24)
+        newWindowSidebarTabIcon.Size = UDim2.new(0, 25, 0, 25)
+        newWindowSidebarTabIcon.Name = generateGUID()
+        newWindowSidebarTabIcon.ImageRectOffset = Vector2.new(964, 204)
+        newWindowSidebarTabIcon.Position = UDim2.new(0.04615384712815285, 0, 0.15000000596046448, 0)
+        newWindowSidebarTabIcon.BackgroundTransparency = 1
+        newWindowSidebarTabIcon.ZIndex = 2
+
+        ret.sidebar = newWindowSidebar
+        ret.sidebarTabs = newWindowSidebarTabs
+    end
+
+    return ret
+end
+
+function Vertical.newTextElement(window, tab, text)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local newWindowElementText = Instance.new("Frame", parent)
+    newWindowElementText.BorderSizePixel = 0
+    newWindowElementText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementText.BackgroundTransparency = 0.9
+    newWindowElementText.Size = UDim2.new(1, -26, 0, 80)
+    newWindowElementText.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementText.Name = elementGUID
+    Vertical.cacheInstance(elementGUID, newWindowElementText)
+
+    local newWindowElementTextUICorner = Instance.new("UICorner", newWindowElementText)
+    newWindowElementTextUICorner.CornerRadius = UDim.new(0, 7)
+
+    local newWindowElementTextUIStroke = Instance.new("UIStroke", newWindowElementText)
+    newWindowElementTextUIStroke.Color = Color3.fromRGB(20, 20, 20)
+    newWindowElementTextUIStroke.Thickness = 0.51
+
+    local newWindowElementTextTextLabel = Instance.new("TextLabel", newWindowElementText)
+    newWindowElementTextTextLabel.TextWrapped = true
+    newWindowElementTextTextLabel.BorderSizePixel = 0
+    newWindowElementTextTextLabel.TextYAlignment = Enum.TextYAlignment.Top
+    newWindowElementTextTextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementTextTextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    newWindowElementTextTextLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newWindowElementTextTextLabel.TextSize = 15
+    newWindowElementTextTextLabel.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newWindowElementTextTextLabel.Size = UDim2.new(1, -21, 1, -12)
+    newWindowElementTextTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementTextTextLabel.Text = text
+    newWindowElementTextTextLabel.BackgroundTransparency = 1
+    newWindowElementTextTextLabel.Position = UDim2.new(0.040145985782146454, 0, 0.09500000298023224, 0)
+
+    local function setText(newText)
+        newWindowElementTextTextLabel.Text = newText
+    end
+    local function destroy()
+        newWindowElementText:Destroy()
+    end
+    local function getText()
+        return newWindowElementTextTextLabel.Text
+    end
+    local function setOutlineColor(color)
+        newWindowElementTextUIStroke.Color = color
+    end
+    local function setBackgroundColor(color)
+        newWindowElementText.BackgroundColor3 = color
+    end
+    local function setTransparency(integer)
+        newWindowElementText.BackgroundTransparency = integer
+    end
+    return {
+        element = newWindowElementText,
+        setText = setText,
+        getText = getText,
+        setOutlineColor = setOutlineColor,
+        setBackgroundColor = setBackgroundColor,
+        setTransparency = setTransparency,
+        destroy = destroy
+    }
+end
+
+function Vertical.newButtonElement(window, tab, text, buttonType)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local buttonIconId, buttonIconOffset, buttonIconSize, buttonIconColor
+    if buttonType == nil or buttonType == 0 then
+        buttonIconId = "rbxassetid://3926305904"
+        buttonIconOffset = Vector2.new(604, 764)
+        buttonIconSize = Vector2.new(36, 36)
+        buttonIconColor = Color3.fromRGB(126, 255, 163)
+    elseif buttonType == 1 then
+        buttonIconId = "rbxassetid://3926305904"
+        buttonIconOffset = Vector2.new(644, 724)
+        buttonIconSize = Vector2.new(36, 36)
+        buttonIconColor = Color3.fromRGB(220, 80, 80)
+    elseif buttonType == 2 then
+        buttonIconId = "rbxassetid://3926305904"
+        buttonIconOffset = Vector2.new(116, 4)
+        buttonIconSize = Vector2.new(24, 24)
+        buttonIconColor = Color3.fromRGB(206, 220, 53)
+    end
+    local newWindowElementButton = Instance.new("Frame", parent)
+    newWindowElementButton.BorderSizePixel = 0
+    newWindowElementButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementButton.BackgroundTransparency = 0.8999999761581421
+    newWindowElementButton.Size = UDim2.new(1, -26, 0, 40)
+    newWindowElementButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementButton.Name = elementGUID
+    Vertical.cacheInstance(elementGUID, newWindowElementButton)
+
+    local newWindowElementButtonUIStroke = Instance.new("UIStroke", newWindowElementButton)
+    newWindowElementButtonUIStroke.Color = Color3.fromRGB(20, 20, 20)
+    newWindowElementButtonUIStroke.Thickness = 0.5099999904632568
+
+    local newWindowElementButtonImage = Instance.new("ImageButton", newWindowElementButton)
+    newWindowElementButtonImage.ImageColor3 = buttonIconColor
+    newWindowElementButtonImage.LayoutOrder = 7
+    newWindowElementButtonImage.Image = buttonIconId
+    newWindowElementButtonImage.ImageRectSize = buttonIconSize
+    newWindowElementButtonImage.Size = UDim2.new(0, 25, 0, 25)
+    newWindowElementButtonImage.Name = generateGUID()
+    newWindowElementButtonImage.ImageRectOffset = buttonIconOffset
+    newWindowElementButtonImage.Position = UDim2.new(0.8722627758979797, 0, 0.17499999701976776, 0)
+    newWindowElementButtonImage.BackgroundTransparency = 1
+
+    local newWindowElementButtonButton = Instance.new("TextButton", newWindowElementButton)
+    newWindowElementButtonButton.TextWrapped = true
+    newWindowElementButtonButton.BorderSizePixel = 0
+    newWindowElementButtonButton.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementButtonButton.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newWindowElementButtonButton.TextSize = 15
+    newWindowElementButtonButton.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newWindowElementButtonButton.Size = UDim2.new(1, 0, 1, 0)
+    newWindowElementButtonButton.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementButtonButton.Text = text
+    newWindowElementButtonButton.BackgroundTransparency = 1
+
+    local newWindowElementButtonUICorner = Instance.new("UICorner", newWindowElementButton)
+    newWindowElementButtonUICorner.CornerRadius = UDim.new(0, 7)
+
+    local function onclick(func)
+        newWindowElementButtonButton.MouseButton1Click:Connect(func)
+        newWindowElementButtonImage.MouseButton1Click:Connect(func)
+    end
+    local function destroy()
+        newWindowElementButton:Destroy()
+    end
+    local function setText(newText)
+        newWindowElementButtonButton.Text = newText
+    end
+    local function getText()
+        return newWindowElementButtonButton.Text
+    end
+    local function setOutlineColor(color)
+        newWindowElementButtonUIStroke.Color = color
+    end
+    local function setBackgroundColor(color)
+        newWindowElementButton.BackgroundColor3 = color
+    end
+    local function setTransparency(integer)
+        newWindowElementButton.BackgroundTransparency = integer
+    end
+    return {
+        element = newWindowElementButton,
+        onclick = onclick,
+        setText = setText,
+        getText = getText,
+        setOutlineColor = setOutlineColor,
+        setBackgroundColor = setBackgroundColor,
+        setTransparency = setTransparency,
+        destroy = destroy
+    }
+end
+
+function Vertical.newCategory(window, tab, name)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local newWindowCategory = Instance.new("Frame", parent)
+    newWindowCategory.BorderSizePixel = 0
+    newWindowCategory.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowCategory.BackgroundTransparency = 1
+    newWindowCategory.Size = UDim2.new(1, -26, 0, 40)
+    newWindowCategory.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowCategory.Name = elementGUID
+    Vertical.cacheInstance(elementGUID, newWindowCategory)
+
+    local newWindowCategoryTextLabel = Instance.new("TextLabel", newWindowCategory)
+    newWindowCategoryTextLabel.BorderSizePixel = 0
+    newWindowCategoryTextLabel.TextYAlignment = Enum.TextYAlignment.Bottom
+    newWindowCategoryTextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowCategoryTextLabel.TextXAlignment = Enum.TextXAlignment.Left
+    newWindowCategoryTextLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newWindowCategoryTextLabel.TextSize = 16
+    newWindowCategoryTextLabel.TextColor3 = Color3.fromRGB(91, 91, 91)
+    newWindowCategoryTextLabel.Size = UDim2.new(1, 0, 1, 0)
+    newWindowCategoryTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowCategoryTextLabel.Text = name
+    newWindowCategoryTextLabel.BackgroundTransparency = 1
+
+    return {
+        element = newWindowCategory
+    }
+end
+
+function Vertical.newSwitchElement(window, tab, text, state)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local stateColor, stateIcon, stateOffset
+    stateColor = Color3.fromRGB(116, 116, 116)
+    stateIcon = "rbxassetid://3926307971"
+    stateOffset = Vector2.new(804, 124)
+    if state == true then
+        stateColor = Color3.fromRGB(118, 150, 255)
+        stateIcon = "rbxassetid://3926307971"
+        stateOffset = Vector2.new(764, 244)
+    end
+    local newWindowElementSwitch = Instance.new("Frame", parent)
+    newWindowElementSwitch.BorderSizePixel = 0
+    newWindowElementSwitch.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementSwitch.BackgroundTransparency = 0.8999999761581421
+    newWindowElementSwitch.Size = UDim2.new(1, -26, 0, 40)
+    newWindowElementSwitch.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementSwitch.Name = elementGUID
+    Vertical.cacheInstance(elementGUID, newWindowElementSwitch)
+
+    local newWindowElementSwitchUICorner = Instance.new("UICorner", newWindowElementSwitch)
+    newWindowElementSwitchUICorner.CornerRadius = UDim.new(0, 7)
+
+    local newWindowElementSwitchUIStroke = Instance.new("UIStroke", newWindowElementSwitch)
+    newWindowElementSwitchUIStroke.Color = Color3.fromRGB(20, 20, 20)
+    newWindowElementSwitchUIStroke.Thickness = 0.5099999904632568
+
+    local newWindowElementSwitchTextLabel = Instance.new("TextButton", newWindowElementSwitch)
+    newWindowElementSwitchTextLabel.TextWrapped = true
+    newWindowElementSwitchTextLabel.BorderSizePixel = 0
+    newWindowElementSwitchTextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementSwitchTextLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newWindowElementSwitchTextLabel.TextSize = 15
+    newWindowElementSwitchTextLabel.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newWindowElementSwitchTextLabel.Size = UDim2.new(1, 0, 1, 0)
+    newWindowElementSwitchTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementSwitchTextLabel.Text = text
+    newWindowElementSwitchTextLabel.BackgroundTransparency = 1
+
+    local newWindowElementSwitchState = Instance.new("ImageButton", newWindowElementSwitch)
+    newWindowElementSwitchState.ImageColor3 = stateColor
+    newWindowElementSwitchState.LayoutOrder = 20
+    newWindowElementSwitchState.Image = stateIcon
+    newWindowElementSwitchState.ImageRectSize = Vector2.new(36, 36)
+    newWindowElementSwitchState.Size = UDim2.new(0, 25, 0, 25)
+    newWindowElementSwitchState.Name = generateGUID()
+    newWindowElementSwitchState.ImageRectOffset = stateOffset
+    newWindowElementSwitchState.Position = UDim2.new(0.8722627758979797, 0, 0.17499999701976776, 0)
+    newWindowElementSwitchState.BackgroundTransparency = 1
+    newWindowElementSwitchState.Visible = true
+
+    local function switch()
+        if state == true then
+            state = false
+            newWindowElementSwitchState.ImageColor3 = Color3.fromRGB(116, 116, 116)
+            newWindowElementSwitchState.Image = "rbxassetid://3926307971"
+            newWindowElementSwitchState.ImageRectOffset = Vector2.new(804, 124)
+        elseif state == false then
+            state = true
+            newWindowElementSwitchState.ImageColor3 = Color3.fromRGB(118, 150, 255)
+            newWindowElementSwitchState.Image = "rbxassetid://3926307971"
+            newWindowElementSwitchState.ImageRectOffset = Vector2.new(764, 244)
+        end
+    end
+    local function onclick(func)
+        newWindowElementSwitchTextLabel.MouseButton1Click:Connect(func)
+        newWindowElementSwitchState.MouseButton1Click:Connect(func)
+    end
+    local function setText(newText)
+        newWindowElementSwitchTextLabel.Text = newText
+    end
+    local function getText()
+        return newWindowElementSwitchTextLabel.Text
+    end
+    local function setOutlineColor(color)
+        newWindowElementSwitchUIStroke.Color = color
+    end
+    local function setBackgroundColor(color)
+        newWindowElementSwitch.BackgroundColor3 = color
+    end
+    local function setTransparency(integer)
+        newWindowElementSwitch.BackgroundTransparency = integer
+    end
+    local function getState()
+        return state
+    end
+    local function setState(newState)
+        state = newState
+        if state == true then
+            newWindowElementSwitchState.ImageColor3 = Color3.fromRGB(118, 150, 255)
+            newWindowElementSwitchState.Image = "rbxassetid://3926307971"
+            newWindowElementSwitchState.ImageRectOffset = Vector2.new(764, 244)
+        elseif state == false then
+            newWindowElementSwitchState.ImageColor3 = Color3.fromRGB(116, 116, 116)
+            newWindowElementSwitchState.Image = "rbxassetid://3926307971"
+            newWindowElementSwitchState.ImageRectOffset = Vector2.new(804, 124)
+        end
+    end
+    return {
+        element = newWindowElementSwitch,
+        onclick = onclick,
+        setText = setText,
+        getText = getText,
+        setOutlineColor = setOutlineColor,
+        setBackgroundColor = setBackgroundColor,
+        setTransparency = setTransparency,
+        getState = getState,
+        setState = setState,
+        switch = switch
+    }
+end
+
+function Vertical.newInputElement(window, tab, text, placeholder)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local newWindowElementInput = Instance.new("Frame", parent)
+    newWindowElementInput.BorderSizePixel = 0
+    newWindowElementInput.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementInput.BackgroundTransparency = 0.8999999761581421
+    newWindowElementInput.Size = UDim2.new(1, -26, 0, 60)
+    newWindowElementInput.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementInput.Name = elementGUID
+    Vertical.cacheInstance(elementGUID, newWindowElementInput)
+
+    local newWindowElementInputUIStroke = Instance.new("UIStroke", newWindowElementInput)
+    newWindowElementInputUIStroke.Color = Color3.fromRGB(20, 20, 20)
+    newWindowElementInputUIStroke.Thickness = 0.5099999904632568
+
+    local newWindowElementInputTextLabel = Instance.new("TextLabel", newWindowElementInput)
+    newWindowElementInputTextLabel.TextWrapped = true
+    newWindowElementInputTextLabel.BorderSizePixel = 0
+    newWindowElementInputTextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementInputTextLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newWindowElementInputTextLabel.TextSize = 15
+    newWindowElementInputTextLabel.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newWindowElementInputTextLabel.Size = UDim2.new(1, 0, 0, 35)
+    newWindowElementInputTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementInputTextLabel.Text = text
+    newWindowElementInputTextLabel.BackgroundTransparency = 1
+
+    local newWindowElementInputIcon = Instance.new("ImageButton", newWindowElementInput)
+    newWindowElementInputIcon.ImageColor3 = Color3.fromRGB(189, 72, 255)
+    newWindowElementInputIcon.Image = "rbxassetid://3926305904"
+    newWindowElementInputIcon.ImageRectSize = Vector2.new(36, 36)
+    newWindowElementInputIcon.Size = UDim2.new(0, 25, 0, 25)
+    newWindowElementInputIcon.Name = generateGUID()
+    newWindowElementInputIcon.ImageRectOffset = Vector2.new(764, 84)
+    newWindowElementInputIcon.Position = UDim2.new(0.8705109357833862, 0, 0.16999968886375427, 0)
+    newWindowElementInputIcon.BackgroundTransparency = 1
+
+    local newWindowElementInputTextBox = Instance.new("TextBox", newWindowElementInput)
+    newWindowElementInputTextBox.BorderSizePixel = 0
+    newWindowElementInputTextBox.TextSize = 15
+    newWindowElementInputTextBox.BackgroundColor3 = Color3.fromRGB(101, 101, 101)
+    newWindowElementInputTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementInputTextBox.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular, Enum.FontStyle.Italic)
+    newWindowElementInputTextBox.BackgroundTransparency = 1
+    newWindowElementInputTextBox.PlaceholderText = placeholder
+    newWindowElementInputTextBox.Size = UDim2.new(1, 0, 0, 25)
+    newWindowElementInputTextBox.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementInputTextBox.Text = ""
+    newWindowElementInputTextBox.Position = UDim2.new(0, 0, 0.5833333134651184, 0)
+
+    local newWindowElementInputTextBoxUICorner = Instance.new("UICorner", newWindowElementInputTextBox)
+    newWindowElementInputTextBoxUICorner.CornerRadius = UDim.new(0, 7)
+
+    local newWindowElementInputUICorner = Instance.new("UICorner", newWindowElementInput)
+    newWindowElementInputUICorner.CornerRadius = UDim.new(0, 7)
+
+    local function setInput(inp)
+        newWindowElementInputTextBox.Text = inp
+    end
+    local function destroy()
+        newWindowElementInput:Destroy()
+    end
+    local function getInput()
+        return newWindowElementInputTextBox.Text
+    end
+    local function setText(newText)
+        newWindowElementInputTextLabel.Text = newText
+    end
+    local function setOutlineColor(color)
+        newWindowElementInputUIStroke.Color = color
+    end
+    local function setBackgroundColor(color)
+        newWindowElementInput.BackgroundColor3 = color
+    end
+    local function setTransparency(integer)
+        newWindowElementInput.BackgroundTransparency = integer
+    end
+    return {
+        element = newWindowElementInput,
+        setInput = setInput,
+        getInput = getInput,
+        setText = setText,
+        setOutlineColor = setOutlineColor,
+        setBackgroundColor = setBackgroundColor,
+        setTransparency = setTransparency,
+        destroy = destroy
+    }
+end
+
+function Vertical.newTab(window, name)
+    local tabGUID = generateGUID()
+    local newWindowContent = Instance.new("ScrollingFrame", window.frame)
+    newWindowContent.Active = true
+    newWindowContent.BorderSizePixel = 0
+    newWindowContent.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowContent.BackgroundTransparency = 1
+    newWindowContent.Size = window.main.Size
+    newWindowContent.ScrollBarImageColor3 = Color3.fromRGB(71, 71, 71)
+    newWindowContent.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowContent.ScrollBarThickness = 6
+    newWindowContent.Position = window.main.Position
+    newWindowContent.Name = tabGUID
+    newWindowContent.Visible = false
+    Vertical.cacheInstance(tabGUID, newWindowContent)
+
+    local newWindowContentUIPadding = Instance.new("UIPadding", newWindowContent)
+    newWindowContentUIPadding.PaddingTop = UDim.new(0, 8)
+
+    local newWindowContentUIListLayout = Instance.new("UIListLayout", newWindowContent)
+    newWindowContentUIListLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    newWindowContentUIListLayout.Padding = UDim.new(0, 7)
+    newWindowContentUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function updateCanvas()
+        newWindowContent.CanvasSize = UDim2.new(0, 0, 0, newWindowContentUIListLayout.AbsoluteContentSize.Y)
+    end
+    newWindowContentUIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvas)
+    updateCanvas()
+
+    local function clear()
+        for _, v in pairs(newWindowContent:GetChildren()) do
+            if v:IsA("Frame") then
+                v:Destroy()
+            end
+        end
+    end
+    local function destroy()
+        newWindowContent:Destroy()
+    end
+    return {
+        tab = newWindowContent,
+        clear = clear,
+        destroy = destroy
+    }
+end
+
+function Vertical.newSidebarOption(window, tabToView, text, icon)
+    if not window.sidebarTabs then
+        error("Sidebar not enabled for this window")
+    end
+    local sidebarOptionGUID = generateGUID()
+    local newWindowSidebarTab = Instance.new("TextButton", window.sidebarTabs)
+    newWindowSidebarTab.BorderSizePixel = 0
+    newWindowSidebarTab.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowSidebarTab.TextSize = 16
+    newWindowSidebarTab.FontFace = Font.new("rbxasset://fonts/families/Ubuntu.json", Enum.FontWeight.Regular, Enum.FontStyle.Normal)
+    newWindowSidebarTab.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newWindowSidebarTab.Size = UDim2.new(1, -4, 0, 40)
+    newWindowSidebarTab.Name = sidebarOptionGUID
+    newWindowSidebarTab.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowSidebarTab.Text = text
+    newWindowSidebarTab.Position = UDim2.new(0.04525686427950859, 0, 0.09749999642372131, 0)
+    newWindowSidebarTab.BackgroundTransparency = 1
+    newWindowSidebarTab.ZIndex = 2
+    Vertical.cacheInstance(sidebarOptionGUID, newWindowSidebarTab)
+
+    newWindowSidebarTab.MouseButton1Click:Connect(function()
+        for _, v in pairs(window.frame:GetChildren()) do
+            if v:IsA("ScrollingFrame") then
+                v.Visible = false
+            end
+        end
+        tabToView.Visible = true
+    end)
+
+    local newWindowSidebarTabUnderline = Instance.new("Frame", newWindowSidebarTab)
+    newWindowSidebarTabUnderline.BorderSizePixel = 0
+    newWindowSidebarTabUnderline.BackgroundColor3 = Color3.fromRGB(151, 151, 151)
+    newWindowSidebarTabUnderline.Size = UDim2.new(0, 110, 0, 1)
+    newWindowSidebarTabUnderline.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowSidebarTabUnderline.Position = UDim2.new(0.03846153989434242, 0, 1, 0)
+    newWindowSidebarTabUnderline.Name = generateGUID()
+    newWindowSidebarTabUnderline.ZIndex = 2
+
+    local newWindowSidebarTabIcon = Instance.new("ImageButton", newWindowSidebarTab)
+    newWindowSidebarTabIcon.ImageTransparency = 0.10000000149011612
+    if icon == nil then
+        newWindowSidebarTabIcon.Image = "rbxassetid://3926305904"
+        newWindowSidebarTabIcon.ImageRectOffset = Vector2.new(964, 204)
+        newWindowSidebarTabIcon.ImageRectSize = Vector2.new(24, 24)
+    else
+        newWindowSidebarTabIcon.Image = icon[1]
+        newWindowSidebarTabIcon.ImageRectOffset = icon[2]
+        if icon[3] ~= nil then
+            newWindowSidebarTabIcon.ImageRectSize = icon[3]
+        end
+    end
+    newWindowSidebarTabIcon.Size = UDim2.new(0, 25, 0, 25)
+    newWindowSidebarTabIcon.Name = generateGUID()
+    newWindowSidebarTabIcon.Position = UDim2.new(0.04615384712815285, 0, 0.15000000596046448, 0)
+    newWindowSidebarTabIcon.BackgroundTransparency = 1
+    newWindowSidebarTabIcon.ZIndex = 2
+
+    local function onclick(func)
+        newWindowSidebarTab.MouseButton1Click:Connect(func)
+        newWindowSidebarTabIcon.MouseButton1Click:Connect(func)
+    end
+    local function destroy()
+        newWindowSidebarTab:Destroy()
+    end
+    return {
+        option = newWindowSidebarTab,
+        onclick = onclick,
+        destroy = destroy
+    }
+end
+
+function Vertical.newSliderElement(window, tab, text, defaultValue)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local newWindowElementSlider = Instance.new("TextButton", parent)
+    newWindowElementSlider.BorderSizePixel = 0
+    newWindowElementSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementSlider.BackgroundTransparency = 0.8999999761581421
+    newWindowElementSlider.Size = UDim2.new(1, -26, 0, 60)
+    newWindowElementSlider.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementSlider.Name = elementGUID
+    newWindowElementSlider.Text = ""
+    Vertical.cacheInstance(elementGUID, newWindowElementSlider)
+
+    local newWindowElementSliderUIStroke = Instance.new("UIStroke", newWindowElementSlider)
+    newWindowElementSliderUIStroke.Color = Color3.fromRGB(20, 20, 20)
+    newWindowElementSliderUIStroke.Thickness = 0.5099999904632568
+
+    local newWindowElementSliderTextLabel = Instance.new("TextLabel", newWindowElementSlider)
+    newWindowElementSliderTextLabel.TextWrapped = true
+    newWindowElementSliderTextLabel.BorderSizePixel = 0
+    newWindowElementSliderTextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementSliderTextLabel.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    newWindowElementSliderTextLabel.TextSize = 15
+    newWindowElementSliderTextLabel.TextColor3 = Color3.fromRGB(221, 221, 221)
+    newWindowElementSliderTextLabel.Size = UDim2.new(1, 0, 0, 40)
+    newWindowElementSliderTextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementSliderTextLabel.BackgroundTransparency = 1
+    newWindowElementSliderTextLabel.Position = UDim2.new(0, 0, -0.014285714365541935, 0)
+
+    local newWindowElementSliderIcon = Instance.new("ImageButton", newWindowElementSlider)
+    newWindowElementSliderIcon.ImageColor3 = Color3.fromRGB(255, 161, 98)
+    newWindowElementSliderIcon.LayoutOrder = 5
+    newWindowElementSliderIcon.Image = "rbxassetid://3926305904"
+    newWindowElementSliderIcon.ImageRectSize = Vector2.new(36, 36)
+    newWindowElementSliderIcon.Size = UDim2.new(0, 25, 0, 25)
+    newWindowElementSliderIcon.Name = generateGUID()
+    newWindowElementSliderIcon.ImageRectOffset = Vector2.new(4, 124)
+    newWindowElementSliderIcon.Position = UDim2.new(0.8722627758979797, 0, 0.10357142984867096, 0)
+    newWindowElementSliderIcon.BackgroundTransparency = 1
+
+    local newWindowElementSliderSliderOutline = Instance.new("Frame", newWindowElementSlider)
+    newWindowElementSliderSliderOutline.BorderSizePixel = 0
+    newWindowElementSliderSliderOutline.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newWindowElementSliderSliderOutline.BackgroundTransparency = 0.8999999761581421
+    newWindowElementSliderSliderOutline.Size = UDim2.new(1, -36, 0, 8)
+    newWindowElementSliderSliderOutline.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementSliderSliderOutline.Position = UDim2.new(0, 18, 0.6976191401481628, 0)
+    newWindowElementSliderSliderOutline.Name = generateGUID()
+
+    local newWindowElementSliderSlider = Instance.new("Frame", newWindowElementSlider)
+    newWindowElementSliderSlider.BorderSizePixel = 0
+    newWindowElementSliderSlider.BackgroundColor3 = Color3.fromRGB(255, 161, 98)
+    newWindowElementSliderSlider.BackgroundTransparency = 0.10000000149011612
+    newWindowElementSliderSlider.Size = UDim2.new(0, 0, 0, 8)
+    newWindowElementSliderSlider.BorderColor3 = Color3.fromRGB(0, 0, 0)
+    newWindowElementSliderSlider.Position = newWindowElementSliderSliderOutline.Position
+    newWindowElementSliderSlider.Name = generateGUID()
+
+    local minSliderValue = 0
+    local maxSliderValue = 100
+    local dragging = false
+    local inputChangedConnection
+    local val = defaultValue or 0
+    local title = text
+    newWindowElementSliderTextLabel.Text = title.." ["..val.."]"
+
+    local fraction = (val - minSliderValue) / (maxSliderValue - minSliderValue)
+    newWindowElementSliderSlider.Size = UDim2.new(fraction, 0, 1, 0)
+
+    newWindowElementSlider.MouseButton1Down:Connect(function()
+        dragging = true
+        local sliderWidth = newWindowElementSliderSliderOutline.AbsoluteSize.X
+        inputChangedConnection = UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local sliderPosition = math.clamp(input.Position.X - newWindowElementSliderSliderOutline.AbsolutePosition.X, 0, sliderWidth)
+                local newValue = math.floor(sliderPosition / sliderWidth * (maxSliderValue - minSliderValue) + minSliderValue)
+                newWindowElementSliderTextLabel.Text = title.." ["..newValue.."]"
+                val = newValue
+                newWindowElementSliderSlider.Size = UDim2.new(0, sliderPosition, 1, 0)
+            end
+        end)
+    end)
+
+    newWindowElementSlider.MouseButton1Up:Connect(function()
+        dragging = false
+        if inputChangedConnection then
+            inputChangedConnection:Disconnect()
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+            if inputChangedConnection then
+                inputChangedConnection:Disconnect()
+            end
+        end
+    end)
+
+    local function getValue()
+        return val
+    end
+    local function minValue(val)
+        minSliderValue = val
+    end
+    local function maxValue(val)
+        maxSliderValue = val
+    end
+
+    local newWindowElementSliderSliderOutlineUICorner = Instance.new("UICorner", newWindowElementSliderSliderOutline)
+    newWindowElementSliderSliderOutlineUICorner.CornerRadius = UDim.new(0, 7)
+
+    local newWindowElementSliderSliderOutlineUIStroke = Instance.new("UIStroke", newWindowElementSliderSliderOutline)
+    newWindowElementSliderSliderOutlineUIStroke.Color = Color3.fromRGB(255, 161, 98)
+    newWindowElementSliderSliderOutlineUIStroke.Thickness = 0.5099999904632568
+
+    local newWindowElementSliderSliderUICorner = Instance.new("UICorner", newWindowElementSliderSlider)
+    newWindowElementSliderSliderUICorner.CornerRadius = UDim.new(0, 7)
+
+    local newWindowElementSliderSliderUIStroke = Instance.new("UIStroke", newWindowElementSliderSlider)
+    newWindowElementSliderSliderUIStroke.Color = Color3.fromRGB(255, 161, 98)
+    newWindowElementSliderSliderUIStroke.Thickness = 0.5099999904632568
+
+    return {
+        element = newWindowElementSlider,
+        getValue = getValue,
+        minValue = minValue,
+        maxValue = maxValue
+    }
+end
+
+function Vertical.newSection(window, tab, name)
+    local sectionGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local newSection = Instance.new("Frame", parent)
+    newSection.BorderSizePixel = 0
+    newSection.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    newSection.Size = UDim2.new(1, -26, 0, 0) -- Height auto-adjusts
+    newSection.Name = sectionGUID
+    Vertical.cacheInstance(sectionGUID, newSection)
+
+    local sectionTitle = Instance.new("TextLabel", newSection)
+    sectionTitle.Text = name
+    sectionTitle.Size = UDim2.new(1, 0, 0, 30)
+    sectionTitle.BackgroundTransparency = 1
+    sectionTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    sectionTitle.Font = Enum.Font.GothamBold
+    sectionTitle.TextSize = 16
+
+    local sectionContent = Instance.new("Frame", newSection)
+    sectionContent.Size = UDim2.new(1, 0, 1, -30)
+    sectionContent.Position = UDim2.new(0, 0, 0, 30)
+    sectionContent.BackgroundTransparency = 1
+
+    local sectionUIListLayout = Instance.new("UIListLayout", sectionContent)
+    sectionUIListLayout.Padding = UDim.new(0, 5)
+    sectionUIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    local function updateSize()
+        newSection.Size = UDim2.new(1, -26, 0, sectionUIListLayout.AbsoluteContentSize.Y + 35)
+    end
+    sectionUIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateSize)
+    updateSize()
+
+    local function addElement(elementTable)
+        elementTable.element.Parent = sectionContent
+        updateSize()
+    end
+    return {
+        section = newSection,
+        addElement = addElement
+    }
+end
+
+function Vertical.newColorPicker(window, tab, text, defaultColor)
+    local elementGUID = generateGUID()
+    local parent = window[tab]
+    if not parent then
+        error("Invalid tab: " .. tostring(tab))
+    end
+    local color = defaultColor or Color3.fromRGB(255, 255, 255)
+    local h, s, v = Color3.toHSV(color)
+    local newColorPicker = Instance.new("Frame", parent)
+    newColorPicker.Size = UDim2.new(1, -26, 0, 150)
+    newColorPicker.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    newColorPicker.BackgroundTransparency = 0.9
+    newColorPicker.Name = elementGUID
+    Vertical.cacheInstance(elementGUID, newColorPicker)
+
+    local titleLabel = Instance.new("TextLabel", newColorPicker)
+    titleLabel.Text = text
+    titleLabel.Size = UDim2.new(1, 0, 0, 30)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.TextColor3 = Color3.fromRGB(221, 221, 221)
+    titleLabel.Font = Enum.Font.GothamBold
+    titleLabel.TextSize = 15
+
+    local colorPreview = Instance.new("Frame", newColorPicker)
+    colorPreview.Size = UDim2.new(0, 50, 0, 50)
+    colorPreview.Position = UDim2.new(0.8, 0, 0.3, 0)
+    colorPreview.BackgroundColor3 = color
+
+    -- Hue Slider
+    local hueSlider = Instance.new("Frame", newColorPicker)
+    hueSlider.Size = UDim2.new(0.7, 0, 0, 20)
+    hueSlider.Position = UDim2.new(0.05, 0, 0.3, 0)
+    hueSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    local hueGradient = Instance.new("UIGradient", hueSlider)
+    hueGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255,0,0)),
+        ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255,255,0)),
+        ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0,255,0)),
+        ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0,255,255)),
+        ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0,0,255)),
+        ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255,0,255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255,0,0))
+    }
+    local hueDragger = Instance.new("Frame", hueSlider)
+    hueDragger.Size = UDim2.new(0, 5, 1, 0)
+    hueDragger.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    hueDragger.Position = UDim2.new(h, 0, 0, 0)
+
+    -- Saturation Slider
+    local satSlider = Instance.new("Frame", newColorPicker)
+    satSlider.Size = UDim2.new(0.7, 0, 0, 20)
+    satSlider.Position = UDim2.new(0.05, 0, 0.5, 0)
+    satSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    local satGradient = Instance.new("UIGradient", satSlider)
+    satGradient.Color = ColorSequence.new(Color3.new(1,1,1), Color3.fromHSV(h,1,v))
+    local satDragger = Instance.new("Frame", satSlider)
+    satDragger.Size = UDim2.new(0, 5, 1, 0)
+    satDragger.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    satDragger.Position = UDim2.new(s, 0, 0, 0)
+
+    -- Value Slider
+    local valSlider = Instance.new("Frame", newColorPicker)
+    valSlider.Size = UDim2.new(0.7, 0, 0, 20)
+    valSlider.Position = UDim2.new(0.05, 0, 0.7, 0)
+    valSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    local valGradient = Instance.new("UIGradient", valSlider)
+    valGradient.Color = ColorSequence.new(Color3.new(0,0,0), Color3.fromHSV(h,s,1))
+    local valDragger = Instance.new("Frame", valSlider)
+    valDragger.Size = UDim2.new(0, 5, 1, 0)
+    valDragger.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    valDragger.Position = UDim2.new(v, 0, 0, 0)
+
+    local function updateColor()
+        color = Color3.fromHSV(h, s, v)
+        colorPreview.BackgroundColor3 = color
+        satGradient.Color = ColorSequence.new(Color3.new(1,1,1), Color3.fromHSV(h,1,v))
+        valGradient.Color = ColorSequence.new(Color3.new(0,0,0), Color3.fromHSV(h,s,1))
+    end
+
+    local function dragSlider(slider, dragger, callback)
+        local dragging = false
+        slider.InputBegan:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = true
+            end
+        end)
+        slider.InputEnded:Connect(function(input)
+            if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                dragging = false
+            end
+        end)
+        UserInputService.InputChanged:Connect(function(input)
+            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                local pos = math.clamp((input.Position.X - slider.AbsolutePosition.X) / slider.AbsoluteSize.X, 0, 1)
+                dragger.Position = UDim2.new(pos, 0, 0, 0)
+                callback(pos)
+                updateColor()
+            end
+        end)
+    end
+
+    dragSlider(hueSlider, hueDragger, function(pos) h = pos end)
+    dragSlider(satSlider, satDragger, function(pos) s = pos end)
+    dragSlider(valSlider, valDragger, function(pos) v = pos end)
+
+    local function getColor()
+        return color
+    end
+    return {
+        element = newColorPicker,
+        getColor = getColor
+    }
+end
+
+return Vertical
