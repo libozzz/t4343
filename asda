@@ -31,7 +31,7 @@ end
 
 -- Init ScreenGui with random name to avoid detection
 local screenGuiName = generateGUID()
-local ScreenGui = script.Parent.Parent
+local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = screenGuiName
 ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") -- Use PlayerGui with random name for evasion
 ScreenGui.ResetOnSpawn = false
@@ -385,10 +385,7 @@ end
 
 function Vertical.newTextElement(window, tab, text)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local newWindowElementText = Instance.new("Frame", parent)
     newWindowElementText.BorderSizePixel = 0
     newWindowElementText.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -451,10 +448,7 @@ end
 
 function Vertical.newButtonElement(window, tab, text, buttonType)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local buttonIconId, buttonIconOffset, buttonIconSize, buttonIconColor
     if buttonType == nil or buttonType == 0 then
         buttonIconId = "rbxassetid://3926305904"
@@ -547,10 +541,7 @@ end
 
 function Vertical.newCategory(window, tab, name)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local newWindowCategory = Instance.new("Frame", parent)
     newWindowCategory.BorderSizePixel = 0
     newWindowCategory.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -580,10 +571,7 @@ end
 
 function Vertical.newSwitchElement(window, tab, text, state)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local stateColor, stateIcon, stateOffset
     stateColor = Color3.fromRGB(116, 116, 116)
     stateIcon = "rbxassetid://3926307971"
@@ -696,10 +684,7 @@ end
 
 function Vertical.newInputElement(window, tab, text, placeholder)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local newWindowElementInput = Instance.new("Frame", parent)
     newWindowElementInput.BorderSizePixel = 0
     newWindowElementInput.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -836,7 +821,7 @@ end
 
 function Vertical.newSidebarOption(window, tabToView, text, icon)
     if not window.sidebarTabs then
-        error("Sidebar not enabled for this window")
+        error("Sidebar not enabled for this window", 2)
     end
     local sidebarOptionGUID = generateGUID()
     local newWindowSidebarTab = Instance.new("TextButton", window.sidebarTabs)
@@ -907,10 +892,7 @@ end
 
 function Vertical.newSliderElement(window, tab, text, defaultValue)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local newWindowElementSlider = Instance.new("TextButton", parent)
     newWindowElementSlider.BorderSizePixel = 0
     newWindowElementSlider.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
@@ -1041,10 +1023,7 @@ end
 
 function Vertical.newSection(window, tab, name)
     local sectionGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local newSection = Instance.new("Frame", parent)
     newSection.BorderSizePixel = 0
     newSection.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -1087,10 +1066,7 @@ end
 
 function Vertical.newColorPicker(window, tab, text, defaultColor)
     local elementGUID = generateGUID()
-    local parent = window[tab]
-    if not parent then
-        error("Invalid tab: " .. tostring(tab))
-    end
+    local parent = window[tab] or error("Invalid tab: " .. tostring(tab), 2)
     local color = defaultColor or Color3.fromRGB(255, 255, 255)
     local h, s, v = Color3.toHSV(color)
     local newColorPicker = Instance.new("Frame", parent)
